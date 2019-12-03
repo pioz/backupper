@@ -13,18 +13,13 @@ class Mailer
     Mail.defaults do
       delivery_method :smtp, options
     end
-    Mail.deliver do
-      to to
-      from from
-      subject self.subject(report)
-      body self.body(report)
-    end
+    Mail.deliver(to: to, from: from, subject: generate_subject(report), body: generate_body(report))
   end
 
   class << self
     private
 
-      def body(report)
+      def generate_body(report)
         b = []
         report.each do |k, data|
           s = ''
@@ -51,7 +46,7 @@ class Mailer
         return "Report for backups (#{Time.now})\n\n#{b.join("\n\n")}"
       end
 
-      def subject(report)
+      def generate_subject(report)
         errors = report.select { |_k, v| v[:error] }.size
         icon = '✅'
         icon = '⚠️' if errors > 0
