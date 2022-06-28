@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    backupper (0.4.1)
+    backupper (0.4.2)
       mail (~> 2.7)
       sshkit (~> 1.15)
 
@@ -11,12 +11,12 @@ GEM
     byebug (11.0.1)
     mail (2.7.1)
       mini_mime (>= 0.1.1)
-    mini_mime (1.0.2)
-    net-scp (2.0.0)
-      net-ssh (>= 2.6.5, < 6.0.0)
-    net-ssh (5.2.0)
+    mini_mime (1.1.2)
+    net-scp (3.0.0)
+      net-ssh (>= 2.6.5, < 7.0.0)
+    net-ssh (6.1.0)
     rake (10.5.0)
-    sshkit (1.20.0)
+    sshkit (1.21.2)
       net-scp (>= 1.1.2)
       net-ssh (>= 2.8.0)
 
@@ -31,4 +31,4 @@ DEPENDENCIES
   rake (~> 10.0)
 
 BUNDLED WITH
-   2.0.2
+   2.3.8
