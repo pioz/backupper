@@ -21,7 +21,7 @@ begin
   parser.parse!
   raise OptionParser::InvalidOption if ARGV.size != 1
 rescue OptionParser::InvalidOption
-  puts parser.banner
+  puts parser.help
   exit 1
 end
 

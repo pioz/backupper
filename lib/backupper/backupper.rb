@@ -103,7 +103,7 @@ class Backupper
     def send_report_email!
       if @report.any? && @mailer['from'] && @mailer['to'] && @mailer['password']
         begin
-          Mailer.send(from: @mailer['from'], to: @mailer['to'], password: @mailer['password'], report: @report)
+          Mailer.send(@report, from: @mailer['from'], to: @mailer['to'], password: @mailer['password'], address: @mailer['address'] || 'smtp.gmail.com', port: @mailer['port'] || 587, authentication: @mailer['authentication'] || 'plain')
         rescue Net::SMTPAuthenticationError => e
           @logger.error e
         end

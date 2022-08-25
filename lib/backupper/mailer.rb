@@ -1,17 +1,16 @@
 require 'mail'
 
 class Mailer
-  def self.send(from:, to:, password:, report:)
-    options = {
-      address:              'smtp.gmail.com',
-      port:                 587,
-      user_name:            from,
-      password:             password,
-      authentication:       'plain',
-      enable_starttls_auto: true
-    }
+  def self.send(report, from:, to:, password:, address:, port:, authentication:)
     Mail.defaults do
-      delivery_method :smtp, options
+      delivery_method :smtp, {
+        address:              address,
+        port:                 port,
+        user_name:            from,
+        password:             password,
+        authentication:       authentication,
+        enable_starttls_auto: true
+      }
     end
     Mail.deliver(to: to, from: from, subject: generate_subject(report), body: generate_body(report))
   end
