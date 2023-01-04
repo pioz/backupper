@@ -19,7 +19,6 @@ end
 
 begin
   parser.parse!
-  raise OptionParser::InvalidOption if ARGV.size != 1
 rescue OptionParser::InvalidOption
   puts parser.help
   exit 1
@@ -28,6 +27,11 @@ end
 if options[:version]
   puts Backupper::VERSION
   exit 0
+end
+
+if ARGV.size != 1
+  puts parser.help
+  exit 1
 end
 
 b = Backupper.new(ARGV.first)
