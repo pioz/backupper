@@ -12,7 +12,8 @@ class Backupper
   SSHKit::Backend::Netssh.configure do |ssh|
     ssh.connection_timeout = 30
     ssh.ssh_options = {
-      auth_methods: %w[publickey password]
+      auth_methods: %w[publickey password],
+      keepalive: true
     }
   end
 
