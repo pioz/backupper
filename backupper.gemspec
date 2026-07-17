@@ -6,11 +6,11 @@ Gem::Specification.new do |spec|
   spec.name          = 'backupper'
   spec.version       = Backupper::VERSION
   spec.authors       = ['pioz']
-  spec.email         = ['enrico.pilotto@uqido.com']
+  spec.email         = ['epilotto@gmx.com']
 
   spec.summary       = 'Tool to backup databases'
   spec.description   = 'Backupper is a tool to backup all your databases spread all over the world'
-  spec.homepage      = 'https://github.com/uqido/backupper'
+  spec.homepage      = 'https://github.com/pioz/backupper'
   spec.license       = 'MIT'
 
   # Prevent pushing this gem to RubyGems.org. To allow pushes either set the 'allowed_push_host'
@@ -28,10 +28,10 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(/^bin\//) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
-  spec.add_runtime_dependency 'mail', '~> 2.7'
-  spec.add_runtime_dependency 'sshkit', '~> 1.15'
+  spec.required_ruby_version = '>= 2.5'
+  spec.add_runtime_dependency 'mail', '~> 2.9'
+  spec.add_runtime_dependency 'sshkit', '~> 1.25'
 
-  spec.add_development_dependency 'bundler', '~> 2'
-  spec.add_development_dependency 'byebug', '~> 11'
-  spec.add_development_dependency 'rake', '~> 10.0'
+  spec.add_development_dependency 'bundler'
+  spec.add_development_dependency 'rake'
 end

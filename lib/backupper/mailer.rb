@@ -1,7 +1,7 @@
 require 'mail'
 
 class Mailer
-  def self.send(report, from:, to:, password:, address:, port:, authentication:)
+  def self.deliver(report, from:, to:, password:, address:, port:, authentication:)
     Mail.defaults do
       delivery_method :smtp, {
         address:              address,
@@ -12,7 +12,7 @@ class Mailer
         enable_starttls_auto: true
       }
     end
-    Mail.deliver(to: to, from: from, subject: generate_subject(report), body: generate_body(report))
+    Mail.deliver(to: to, from: from, subject: generate_subject(report), body: generate_body(report), charset: 'UTF-8')
   end
 
   class << self
