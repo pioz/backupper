@@ -28,7 +28,7 @@ db1:
   host: '1.2.3.4'                              # server ssh ip
   port: 22                                     # server ssh port
   password: Pa$$w0rD                           # server ssh password
-  adapter: mysql                               # database to backup (supported are mysql or postgresql)
+  adapter: mysql                               # adapter to use to perform the backup
   database: db_name                            # database name
   db_username: db_user                         # database username
   db_password: db_Pa$$w0rD                     # database password

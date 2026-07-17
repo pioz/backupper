@@ -1,4 +1,5 @@
 require 'fileutils'
+require 'shellwords'
 require 'sshkit'
 require 'sshkit/dsl'
 require 'yaml'
@@ -29,7 +30,14 @@ class Backupper
 
   def backup!(only_these_keys = nil)
     filtered_conf = @conf
-    filtered_conf = @conf.slice(*only_these_keys) if only_these_keys
+    if only_these_keys
+      filtered_conf = @conf.slice(*only_these_keys)
+      (only_these_keys - @conf.keys).each do |k|
+        err = "Configuration key '#{k}' not found or disabled!"
+        error(k, err)
+        @logger.error err
+      end
+    end
     filtered_conf.each do |k, options|
       @logger.info "[#{Time.now}] ⬇️  backing up #{k}..."
       o, err = setup_options(options)
@@ -68,22 +76,24 @@ class Backupper
     temp_working_dir = File.join('/tmp', working_dirname)
     dump_name = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{filename}"
     path = File.join(outdir, dump_name)
+    temp_file = Shellwords.escape(temp_file)
+    working_dir = Shellwords.escape(temp_working_dir)
     on(url) do |host|
       host.password = password
-      sudo_execute :mkdir, '-p', temp_working_dir, password: password, sudo: sudo
+      sudo_execute :mkdir, '-p', working_dir, password: password, sudo: sudo
       command = DumpCommand.public_send(
         adapter,
-        database: database,
-        username: db_username,
-        password: db_password,
+        database: Shellwords.escape(database),
+        username: Shellwords.escape(db_username),
+        password: db_password && Shellwords.escape(db_password),
         dump_options: dump_options,
-        working_dir: temp_working_dir,
+        working_dir: working_dir,
         outfile: temp_file
       )
       sudo_execute 'set -o pipefail; ' + command, password: password, sudo: sudo
       download! temp_file, path
       sudo_execute :rm, temp_file, password: password, sudo: sudo
-      sudo_execute :rm, '-r', temp_working_dir, password: password, sudo: sudo
+      sudo_execute :rm, '-r', working_dir, password: password, sudo: sudo
     end
     extra_copy = check_dir(extra_copy)
     FileUtils.cp(path, extra_copy) if extra_copy
