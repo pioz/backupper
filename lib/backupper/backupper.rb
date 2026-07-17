@@ -47,7 +47,7 @@ class Backupper
         next
       end
       begin
-        download_dump(
+        do_and_download_dump(
           key:          k,
           adapter:      o['adapter'],
           url:          o['url'],
@@ -68,44 +68,44 @@ class Backupper
     send_report_email!
   end
 
-  def download_dump(key:, adapter: 'mysql', url:, password: nil, database:, db_username: 'root', db_password: nil, dump_options: nil, sudo: false, outdir:, extra_copy: nil)
-    t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    filename = "#{key}__#{database}#{DumpCommand::EXTENSIONS[adapter]}"
-    temp_file = File.join('/tmp', filename)
-    working_dirname = "#{key}__#{database}"
-    temp_working_dir = File.join('/tmp', working_dirname)
-    dump_name = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{filename}"
-    path = File.join(outdir, dump_name)
-    outfile = Shellwords.escape(temp_file)
-    working_dir = Shellwords.escape(temp_working_dir)
-    on(url) do |host|
-      host.password = password
-      sudo_execute :mkdir, '-p', working_dir, password: password, sudo: sudo
-      command = DumpCommand.public_send(
-        adapter,
-        database: Shellwords.escape(database),
-        username: Shellwords.escape(db_username),
-        password: db_password && Shellwords.escape(db_password),
-        dump_options: dump_options,
-        working_dir: working_dir,
-        outfile: outfile
-      )
-      sudo_execute 'set -o pipefail; ' + command, password: password, sudo: sudo
-      download! temp_file, path
-      sudo_execute :rm, outfile, password: password, sudo: sudo
-      sudo_execute :rm, '-r', working_dir, password: password, sudo: sudo
-    end
-    extra_copy = check_dir(extra_copy)
-    FileUtils.cp(path, extra_copy) if extra_copy
-    @report[key] = {
-      path: File.absolute_path(path),
-      size: (File.size(path).to_f / 2**20).round(2),
-      time: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t).round(2)
-    }
-    @report[key][:extra_copy] = File.absolute_path(File.join(extra_copy, dump_name)) if extra_copy
-  end
-
   private
+
+    def do_and_download_dump(key:, adapter: 'mysql', url:, password: nil, database:, db_username: 'root', db_password: nil, dump_options: nil, sudo: false, outdir:, extra_copy: nil)
+      t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      filename = "#{key}__#{database}#{DumpCommand::EXTENSIONS[adapter]}"
+      temp_file = File.join('/tmp', filename)
+      working_dirname = "#{key}__#{database}"
+      temp_working_dir = File.join('/tmp', working_dirname)
+      dump_name = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{filename}"
+      path = File.join(outdir, dump_name)
+      outfile = Shellwords.escape(temp_file)
+      working_dir = Shellwords.escape(temp_working_dir)
+      on(url) do |host|
+        host.password = password
+        sudo_execute :mkdir, '-p', working_dir, password: password, sudo: sudo
+        command = DumpCommand.public_send(
+          adapter,
+          database: Shellwords.escape(database),
+          username: Shellwords.escape(db_username),
+          password: db_password && Shellwords.escape(db_password),
+          dump_options: dump_options,
+          working_dir: working_dir,
+          outfile: outfile
+        )
+        sudo_execute 'set -o pipefail; ' + command, password: password, sudo: sudo
+        download! temp_file, path
+        sudo_execute :rm, outfile, password: password, sudo: sudo
+        sudo_execute :rm, '-r', working_dir, password: password, sudo: sudo
+      end
+      extra_copy = check_dir(extra_copy)
+      FileUtils.cp(path, extra_copy) if extra_copy
+      @report[key] = {
+        path: File.absolute_path(path),
+        size: (File.size(path).to_f / 2**20).round(2),
+        time: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t).round(2)
+      }
+      @report[key][:extra_copy] = File.absolute_path(File.join(extra_copy, dump_name)) if extra_copy
+    end
 
     def setup_options(options)
       o = @default.merge(options)
@@ -121,8 +121,29 @@ class Backupper
       unless DumpCommand.singleton_methods(false).map(&:to_s).include?(o['adapter'])
         return nil, "Cannot handle adapter '#{o['adapter']}' (supported: #{DumpCommand.singleton_methods(false).join(', ')})"
       end
+      begin
+        shellescape_dump_options(o['dump_options'])
+      rescue ArgumentError => e
+        return nil, e.message
+      end
 
       return o, nil
+    end
+
+    def shellescape_dump_options(dump_options)
+      return nil if dump_options.nil?
+
+      options =
+        if dump_options.is_a?(Array)
+          dump_options.map(&:to_s)
+        else
+          Shellwords.split(dump_options.to_s)
+        end
+      return nil if options.empty?
+
+      return options.map { |option| Shellwords.escape(option) }.join(' ')
+    rescue ArgumentError => e
+      raise ArgumentError, "Invalid dump_options: #{e.message}"
     end
 
     def send_report_email!

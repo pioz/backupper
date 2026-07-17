@@ -37,7 +37,7 @@ db1:
   database: db_name                            # database name
   db_username: db_user                         # database username
   db_password: db_Pa$$w0rD                     # database password
-  dump_options: '--single-transaction --quick' # dump command extra options
+  dump_options: '--single-transaction --quick' # dump command extra options (shell-style quoted or YAML array)
 
 db2:
   disabled: false
@@ -70,7 +70,7 @@ def self.myadapter(database:, username: 'root', password: nil, dump_options: nil
 end
 ```
 
-All the values arrive already shell-escaped: interpolate them as they are, without wrapping them in quotes. The command must write the dump to `outfile`; `working_dir` is an empty temporary directory you can use as scratch space (both are removed from the server after the download). If your adapter produces a file format different from `.sql.bz2`, add its extension to `DumpCommand::EXTENSIONS`.
+All the values arrive already shell-escaped: interpolate them as they are, without wrapping them in quotes. `dump_options` is parsed as shell-style arguments, then each argument is escaped before it reaches the adapter. The command must write the dump to `outfile`; `working_dir` is an empty temporary directory you can use as scratch space (both are removed from the server after the download). If your adapter produces a file format different from `.sql.bz2`, add its extension to `DumpCommand::EXTENSIONS`.
 
 ## Contributing
 
