@@ -76,7 +76,7 @@ class Backupper
     temp_working_dir = File.join('/tmp', working_dirname)
     dump_name = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{filename}"
     path = File.join(outdir, dump_name)
-    temp_file = Shellwords.escape(temp_file)
+    outfile = Shellwords.escape(temp_file)
     working_dir = Shellwords.escape(temp_working_dir)
     on(url) do |host|
       host.password = password
@@ -88,11 +88,11 @@ class Backupper
         password: db_password && Shellwords.escape(db_password),
         dump_options: dump_options,
         working_dir: working_dir,
-        outfile: temp_file
+        outfile: outfile
       )
       sudo_execute 'set -o pipefail; ' + command, password: password, sudo: sudo
       download! temp_file, path
-      sudo_execute :rm, temp_file, password: password, sudo: sudo
+      sudo_execute :rm, outfile, password: password, sudo: sudo
       sudo_execute :rm, '-r', working_dir, password: password, sudo: sudo
     end
     extra_copy = check_dir(extra_copy)
