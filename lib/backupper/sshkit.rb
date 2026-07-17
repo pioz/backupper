@@ -2,8 +2,8 @@ require 'shellwords'
 require 'sshkit'
 
 module SSHKitSudoExecute
-  def sudo_execute(*command, password: nil, sudo: false)
-    return execute(*command) unless sudo
+  def sudo_execute(*command, password: nil, sudo: false, **options)
+    return execute(*command, options) unless sudo
 
     prompt = 'SSHKitSudoPassword'
     execute(
@@ -12,9 +12,11 @@ module SSHKitSudoExecute
       '-p', prompt,
       '--',
       'bash', '-c', command.map(&:to_s).join(' ').shellescape,
-      interaction_handler: {
-        /#{Regexp.escape(prompt)}/ => "#{password}\n"
-      }
+      options.merge(
+        interaction_handler: {
+          /#{Regexp.escape(prompt)}/ => "#{password}\n"
+        }
+      )
     )
   end
 end
