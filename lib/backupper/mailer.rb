@@ -12,7 +12,7 @@ class Mailer
         enable_starttls_auto: true
       }
     end
-    Mail.deliver(to: to, from: from, subject: generate_subject(report), body: generate_body(report))
+    Mail.deliver(to: to, from: from, subject: generate_subject(report), body: generate_body(report), charset: 'UTF-8')
   end
 
   class << self
