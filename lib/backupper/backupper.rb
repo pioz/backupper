@@ -5,6 +5,7 @@ require 'yaml'
 
 require_relative 'dump_command'
 require_relative 'mailer'
+require_relative 'sshkit'
 
 class Backupper
   include SSHKit::DSL
@@ -47,6 +48,7 @@ class Backupper
           db_username:  o['db_username'],
           db_password:  o['db_password'],
           dump_options: o['dump_options'],
+          sudo:         o['sudo'],
           outdir:       o['outdir'],
           extra_copy:   o['extra_copy']
         )
@@ -58,18 +60,30 @@ class Backupper
     send_report_email!
   end
 
-  def download_dump(key:, adapter: 'mysql', url:, password: nil, database:, db_username: 'root', db_password: nil, dump_options: nil, outdir:, extra_copy: nil)
+  def download_dump(key:, adapter: 'mysql', url:, password: nil, database:, db_username: 'root', db_password: nil, dump_options: nil, sudo: false, outdir:, extra_copy: nil)
     t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    path = nil
     filename = "#{key}__#{database}.sql.bz2"
-    tempfile = File.join('/tmp', filename)
-    dumpname = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{filename}"
-    path = File.join(outdir, dumpname)
-    on(url) do |client|
-      client.password = password
-      execute 'set -o pipefail; ' + DumpCommand.send(adapter, database: database, username: db_username, password: db_password, dump_options: dump_options, outfile: tempfile)
-      download! tempfile, path
-      execute :rm, tempfile
+    temp_file = File.join('/tmp', filename)
+    working_dirname = "#{key}__#{database}"
+    temp_working_dir = File.join('/tmp', working_dirname)
+    dump_name = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{filename}"
+    path = File.join(outdir, dump_name)
+    on(url) do |host|
+      host.password = password
+      sudo_execute :mkdir, '-p', temp_working_dir, password: password, sudo: sudo
+      command = DumpCommand.public_send(
+        adapter,
+        database: database,
+        username: db_username,
+        password: db_password,
+        dump_options: dump_options,
+        working_dir: temp_working_dir,
+        outfile: temp_file
+      )
+      sudo_execute 'set -o pipefail; ' + command, password: password, sudo: sudo
+      download! temp_file, path
+      sudo_execute :rm, temp_file, password: password, sudo: sudo
+      sudo_execute :rm, '-r', temp_working_dir, password: password, sudo: sudo
     end
     extra_copy = check_dir(extra_copy)
     FileUtils.cp(path, extra_copy) if extra_copy
@@ -78,7 +92,7 @@ class Backupper
       size: (File.size(path).to_f / 2**20).round(2),
       time: (Process.clock_gettime(Process::CLOCK_MONOTONIC) - t).round(2)
     }
-    @report[key].merge!({ extra_copy: File.absolute_path(File.join(extra_copy, dumpname)) }) if extra_copy
+    @report[key][:extra_copy] = File.absolute_path(File.join(extra_copy, dump_name)) if extra_copy
   end
 
   private
@@ -94,8 +108,8 @@ class Backupper
       o['url'] = "#{o['username']}@#{o['url']}" if o['username']
       o['url'] = "#{o['url']}:#{o['port']}" if o['port']
       o['adapter'] ||= 'mysql'
-      unless DumpCommand.respond_to?(o['adapter'])
-        return nil, "Cannot handle adapter '#{o['adapter']}'"
+      unless DumpCommand.singleton_methods(false).map(&:to_s).include?(o['adapter'])
+        return nil, "Cannot handle adapter '#{o['adapter']}' (supported: #{DumpCommand.singleton_methods(false).join(', ')})"
       end
 
       return o, nil
@@ -104,7 +118,7 @@ class Backupper
     def send_report_email!
       if @report.any? && @mailer['from'] && @mailer['to'] && @mailer['password']
         begin
-          Mailer.send(@report, from: @mailer['from'], to: @mailer['to'], password: @mailer['password'], address: @mailer['address'] || 'smtp.gmail.com', port: @mailer['port'] || 587, authentication: @mailer['authentication'] || 'plain')
+          Mailer.deliver(@report, from: @mailer['from'], to: @mailer['to'], password: @mailer['password'], address: @mailer['address'] || 'smtp.gmail.com', port: @mailer['port'] || 587, authentication: @mailer['authentication'] || 'plain')
         rescue Net::SMTPAuthenticationError => e
           @logger.error e
         end

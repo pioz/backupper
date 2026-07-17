@@ -1,7 +1,7 @@
 require 'mail'
 
 class Mailer
-  def self.send(report, from:, to:, password:, address:, port:, authentication:)
+  def self.deliver(report, from:, to:, password:, address:, port:, authentication:)
     Mail.defaults do
       delivery_method :smtp, {
         address:              address,
