@@ -28,8 +28,9 @@ Gem::Specification.new do |spec|
   spec.executables   = spec.files.grep(/^bin\//) { |f| File.basename(f) }
   spec.require_paths = ['lib']
 
-  spec.add_runtime_dependency 'mail'
-  spec.add_runtime_dependency 'sshkit'
+  spec.required_ruby_version = '>= 2.5'
+  spec.add_runtime_dependency 'mail', '~> 2.9'
+  spec.add_runtime_dependency 'sshkit', '~> 1.25'
 
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake'

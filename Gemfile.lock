@@ -2,8 +2,8 @@ PATH
   remote: .
   specs:
     backupper (0.5.2)
-      mail
-      sshkit
+      mail (~> 2.9)
+      sshkit (~> 1.25)
 
 GEM
   remote: https://rubygems.org/
