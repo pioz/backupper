@@ -20,6 +20,10 @@ mailer:
   to: pioz@email.com      # Send report email to this address
   password: Pa$$w0rD      # Gmail account password
 
+default:                  # options here are merged into all database configurations below
+  port: 22
+  db_username: backup
+
 db1:
   disabled: false                              # true to disable this backup
   dump: '/home/backup/db1'                     # path where to save the dump of the database
@@ -27,8 +31,9 @@ db1:
   username: user                               # server ssh username
   host: '1.2.3.4'                              # server ssh ip
   port: 22                                     # server ssh port
-  password: Pa$$w0rD                           # server ssh password
-  adapter: mysql                               # adapter to use to perform the backup
+  password: Pa$$w0rD                           # server ssh password (also used as sudo password when sudo is true)
+  sudo: false                                  # true to run the dump command with sudo
+  adapter: mysql                               # adapter to use to perform the backup (mysql, postgresql or mydumper)
   database: db_name                            # database name
   db_username: db_user                         # database username
   db_password: db_Pa$$w0rD                     # database password
@@ -54,6 +59,18 @@ After done all backups a report email is sent to you using gmail smtp service (r
 
 To backup only specific databases you can pass the option `-o db1,db3`. In this way only databases under the key `db1` and `db3` will be backupped,
 ignoring the others configuration keys.
+
+## Custom adapters
+
+An adapter is just a module method of `DumpCommand` that returns the shell command used to dump the database:
+
+```ruby
+def self.myadapter(database:, username: 'root', password: nil, dump_options: nil, working_dir: nil, outfile:)
+  return "mydump #{database} -u #{username} > #{outfile}"
+end
+```
+
+All the values arrive already shell-escaped: interpolate them as they are, without wrapping them in quotes. The command must write the dump to `outfile`; `working_dir` is an empty temporary directory you can use as scratch space (both are removed from the server after the download). If your adapter produces a file format different from `.sql.bz2`, add its extension to `DumpCommand::EXTENSIONS`.
 
 ## Contributing
 
