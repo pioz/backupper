@@ -70,7 +70,7 @@ class Backupper
 
   def download_dump(key:, adapter: 'mysql', url:, password: nil, database:, db_username: 'root', db_password: nil, dump_options: nil, sudo: false, outdir:, extra_copy: nil)
     t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    filename = "#{key}__#{database}.sql.bz2"
+    filename = "#{key}__#{database}#{DumpCommand::EXTENSIONS[adapter]}"
     temp_file = File.join('/tmp', filename)
     working_dirname = "#{key}__#{database}"
     temp_working_dir = File.join('/tmp', working_dirname)
