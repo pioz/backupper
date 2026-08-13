@@ -1,6 +1,6 @@
 module DumpCommand
   # Extension of the file produced by each adapter ('.sql.bz2' if not listed here)
-  EXTENSIONS = Hash.new('.sql.bz2').update('mydumper' => '.tar.bz2').freeze
+  EXTENSIONS = Hash.new('.sql.bz2').update('mydumper' => '.tar').freeze
 
   def self.mysql(database:, username: 'root', password: nil, dump_options: nil, working_dir: nil, outfile:)
     params = []
@@ -22,6 +22,6 @@ module DumpCommand
     params << "--user #{username}"
     params << "--password #{password}" if password
     params << dump_options if dump_options
-    return "mydumper --database #{database} #{params.join(' ')} --outputdir #{working_dir} && tar -cjf #{outfile} -C #{File.dirname(working_dir)} #{File.basename(working_dir)}"
+    return "mydumper --database #{database} #{params.join(' ')} --outputdir #{working_dir} && tar -cf #{outfile} -C #{File.dirname(working_dir)} #{File.basename(working_dir)}"
   end
 end
