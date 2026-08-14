@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    backupper (0.6.1)
+    backupper (0.7.0)
       mail (~> 2.9)
       sshkit (~> 1.25)
 

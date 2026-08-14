@@ -1,10 +1,12 @@
 require 'fileutils'
-require 'shellwords'
 require 'sshkit'
 require 'sshkit/dsl'
 require 'yaml'
 
-require_relative 'dump_command'
+require_relative 'adapter'
+require_relative 'adapters/mysql'
+require_relative 'adapters/postgresql'
+require_relative 'adapters/mydumper'
 require_relative 'mailer'
 require_relative 'sshkit'
 
@@ -60,7 +62,7 @@ class Backupper
           outdir:       o['outdir'],
           extra_copy:   o['extra_copy']
         )
-      rescue SSHKit::Runner::ExecuteError => e
+      rescue SSHKit::Runner::ExecuteError, ArgumentError, NotImplementedError => e
         error(k, e.to_s)
         @logger.error e
       end
@@ -72,30 +74,23 @@ class Backupper
 
     def do_and_download_dump(key:, adapter: 'mysql', url:, password: nil, database:, db_username: 'root', db_password: nil, dump_options: nil, sudo: false, outdir:, extra_copy: nil)
       t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      filename = "#{key}__#{database}#{DumpCommand::EXTENSIONS[adapter]}"
-      temp_file = File.join('/tmp', filename)
-      working_dirname = "#{key}__#{database}"
-      temp_working_dir = File.join('/tmp', working_dirname)
-      dump_name = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{filename}"
+      adapter = Adapter.find(adapter).new(
+        database: database,
+        username: db_username,
+        password: db_password,
+        dump_options: dump_options,
+        basename: "#{key}__#{database}"
+      )
+      dump_name = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{adapter.filename}"
       path = File.join(outdir, dump_name)
-      outfile = Shellwords.escape(temp_file)
-      working_dir = Shellwords.escape(temp_working_dir)
+      command = adapter.command
       on(url) do |host|
         host.password = password
-        sudo_execute :mkdir, '-p', working_dir, password: password, sudo: sudo
-        command = DumpCommand.public_send(
-          adapter,
-          database: Shellwords.escape(database),
-          username: Shellwords.escape(db_username),
-          password: db_password && Shellwords.escape(db_password),
-          dump_options: dump_options,
-          working_dir: working_dir,
-          outfile: outfile
-        )
+        sudo_execute :mkdir, '-p', adapter.working_dir, password: password, sudo: sudo
         sudo_execute 'set -o pipefail; ' + command, password: password, sudo: sudo
-        download! temp_file, path
-        sudo_execute :rm, outfile, password: password, sudo: sudo
-        sudo_execute :rm, '-r', working_dir, password: password, sudo: sudo
+        download! adapter.outfile_path, path
+        sudo_execute :rm, adapter.outfile, password: password, sudo: sudo
+        sudo_execute :rm, '-r', adapter.working_dir, password: password, sudo: sudo
       end
       extra_copy = check_dir(extra_copy)
       FileUtils.cp(path, extra_copy) if extra_copy
@@ -118,32 +113,16 @@ class Backupper
       o['url'] = "#{o['username']}@#{o['url']}" if o['username']
       o['url'] = "#{o['url']}:#{o['port']}" if o['port']
       o['adapter'] ||= 'mysql'
-      unless DumpCommand.singleton_methods(false).map(&:to_s).include?(o['adapter'])
-        return nil, "Cannot handle adapter '#{o['adapter']}' (supported: #{DumpCommand.singleton_methods(false).join(', ')})"
+      if Adapter.find(o['adapter']).nil?
+        return nil, "Cannot handle adapter '#{o['adapter']}' (supported: #{Adapter.names.join(', ')})"
       end
       begin
-        shellescape_dump_options(o['dump_options'])
+        Adapter.shellescape_dump_options(o['dump_options'])
       rescue ArgumentError => e
         return nil, e.message
       end
 
       return o, nil
-    end
-
-    def shellescape_dump_options(dump_options)
-      return nil if dump_options.nil?
-
-      options =
-        if dump_options.is_a?(Array)
-          dump_options.map(&:to_s)
-        else
-          Shellwords.split(dump_options.to_s)
-        end
-      return nil if options.empty?
-
-      return options.map { |option| Shellwords.escape(option) }.join(' ')
-    rescue ArgumentError => e
-      raise ArgumentError, "Invalid dump_options: #{e.message}"
     end
 
     def send_report_email!

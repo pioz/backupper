@@ -33,7 +33,7 @@ db1:
   port: 22                                     # server ssh port
   password: Pa$$w0rD                           # server ssh password (also used as sudo password when sudo is true)
   sudo: false                                  # true to run the dump command with sudo
-  adapter: mysql                               # adapter to use to perform the backup (mysql, postgresql or mydumper)
+  adapter: mysql                               # adapter to use to perform the backup (built-in: mysql, postgresql, mydumper — see "Custom adapters")
   database: db_name                            # database name
   db_username: db_user                         # database username
   db_password: db_Pa$$w0rD                     # database password
@@ -62,15 +62,44 @@ ignoring the others configuration keys.
 
 ## Custom adapters
 
-An adapter is just a module method of `DumpCommand` that returns the shell command used to dump the database:
+An adapter is a subclass of `Backupper::Adapter` that declares the extension of the file it produces and builds the shell command used to dump the database:
 
 ```ruby
-def self.myadapter(database:, username: 'root', password: nil, dump_options: nil, working_dir: nil, outfile:)
-  return "mydump #{database} -u #{username} > #{outfile}"
+require 'backupper'
+
+class Foodump < Backupper::Adapter
+  # Automatically registered as 'foodump' (the underscored class name).
+  # Uncomment to use a different name for the `adapter:` configuration key:
+  # register 'foo'
+
+  def extension
+    return '.sql.gz'
+  end
+
+  def command
+    params = []
+    params << "-u #{username}"
+    params << "-p #{password}" if password
+    params << dump_options if dump_options
+    return "foodump #{database} #{params.join(' ')} | gzip > #{outfile}"
+  end
 end
 ```
 
-All the values arrive already shell-escaped: interpolate them as they are, without wrapping them in quotes. `dump_options` is parsed as shell-style arguments, then each argument is escaped before it reaches the adapter. The command must write the dump to `outfile`; `working_dir` is an empty temporary directory you can use as scratch space (both are removed from the server after the download). If your adapter produces a file format different from `.sql.bz2`, add its extension to `DumpCommand::EXTENSIONS`.
+Inside `command` you never deal with shell escaping: every accessor already returns a shell-escaped value, so interpolate them directly, without wrapping them in quotes.
+
+| accessor       | value                                                                    |
+|----------------|--------------------------------------------------------------------------|
+| `database`     | database name                                                            |
+| `username`     | database username                                                        |
+| `password`     | database password, or `nil` if not configured                            |
+| `dump_options` | extra options as a single escaped string, or `nil` if not configured     |
+| `outfile`      | remote path where the command must write the dump (extension included)  |
+| `working_dir`  | empty temporary directory you can use as scratch space                   |
+
+`command` must return a single command string (it is run with `set -o pipefail`, so chaining with `|` and `&&` is fine) and must write the dump to `outfile`. `working_dir` is created before the command runs; both `working_dir` and `outfile` are removed from the server after the download. If two adapters register the same name, the last one loaded wins, so a custom adapter can also replace a built-in one.
+
+⚠️ Upgrading from 0.6: custom adapters written as `DumpCommand` module methods no longer work; port each method to a `Backupper::Adapter` subclass as shown above. Also, `mydumper` archives now store the dump under its full remote path (`tmp/<key>__<database>/...`) instead of a top-level `<key>__<database>/` directory.
 
 ## Contributing
 
