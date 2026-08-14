@@ -12,7 +12,7 @@ class Backupper
         params << "--user #{username}"
         params << "--password #{password}" if password
         params << dump_options if dump_options
-        return "mydumper --database #{database} #{params.join(' ')} --outputdir #{working_dir} && tar -cf #{outfile} #{working_dir}"
+        return "mydumper --database #{database} #{params.join(' ')} --outputdir #{working_dir} && tar -cf #{outfile} -C #{working_dir} ."
       end
     end
   end

@@ -99,7 +99,7 @@ Inside `command` you never deal with shell escaping: every accessor already retu
 
 `command` must return a single command string (it is run with `set -o pipefail`, so chaining with `|` and `&&` is fine) and must write the dump to `outfile`. `working_dir` is created before the command runs; both `working_dir` and `outfile` are removed from the server after the download. If two adapters register the same name, the last one loaded wins, so a custom adapter can also replace a built-in one.
 
-⚠️ Upgrading from 0.6: custom adapters written as `DumpCommand` module methods no longer work; port each method to a `Backupper::Adapter` subclass as shown above. Also, `mydumper` archives now store the dump under its full remote path (`tmp/<key>__<database>/...`) instead of a top-level `<key>__<database>/` directory.
+⚠️ Upgrading from 0.6: custom adapters written as `DumpCommand` module methods no longer work; port each method to a `Backupper::Adapter` subclass as shown above. Also, `mydumper` archives no longer contain a top-level `<key>__<database>/` directory: the dump files are at the root of the tar, so extract into a dedicated directory (`tar -xf backup.tar -C restore-dir`).
 
 ## Contributing
 
