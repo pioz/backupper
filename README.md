@@ -38,6 +38,7 @@ db1:
   db_username: db_user                         # database username
   db_password: db_Pa$$w0rD                     # database password
   dump_options: '--single-transaction --quick' # dump command extra options (shell-style quoted or YAML array)
+  tmp_dir: '/var/tmp'                          # remote directory where the dump is staged before the download (default: /tmp)
 
 db2:
   disabled: false
