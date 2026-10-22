@@ -60,7 +60,8 @@ class Backupper
           dump_options: o['dump_options'],
           sudo:         o['sudo'],
           outdir:       o['outdir'],
-          extra_copy:   o['extra_copy']
+          extra_copy:   o['extra_copy'],
+          tmp_dir:      o['tmp_dir']
         )
       rescue SSHKit::Runner::ExecuteError, ArgumentError, NotImplementedError => e
         error(k, e.to_s)
@@ -72,14 +73,15 @@ class Backupper
 
   private
 
-    def do_and_download_dump(key:, adapter: 'mysql', url:, password: nil, database:, db_username: 'root', db_password: nil, dump_options: nil, sudo: false, outdir:, extra_copy: nil)
+    def do_and_download_dump(key:, adapter: 'mysql', url:, password: nil, database:, db_username: 'root', db_password: nil, dump_options: nil, sudo: false, outdir:, extra_copy: nil, tmp_dir: nil)
       t = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       adapter = Adapter.find(adapter).new(
         database: database,
         username: db_username,
         password: db_password,
         dump_options: dump_options,
-        basename: "#{key}__#{database}"
+        basename: "#{key}__#{database}",
+        tmp_dir: tmp_dir || '/tmp'
       )
       dump_name = "#{Time.now.strftime('%Y-%m-%d_%H-%M-%S')}__#{adapter.filename}"
       path = File.join(outdir, dump_name)
